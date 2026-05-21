@@ -1,0 +1,105 @@
+ # Importar Pandas y Yahoo Finance
+import pandas as pd
+import yfinance as yf
+
+# Descargar datos acción Apple
+ticker = 'AAPL'
+df_apple = yf.download(ticker, start='2010-01-01')
+df_apple
+
+# Quedarnos únicamente con el valor de cierre
+df = df_apple['Close'].to_frame() # to_frame para que siga siendo dataframe
+df
+
+# Verificar tipos de datos (cantidades numéricas)
+df.info()
+
+# Verificar que el índice es de tipo "datetime"
+df.index
+
+# Verificar registros duplicados
+df.duplicated().any()
+
+# Verificar si hay fechas duplicadas en el índice
+df.index.duplicated().any()
+
+# Verificar si hay datos faltantes
+df.isna().sum()
+
+ax = df.plot(figsize=(12,4))
+ax.grid()
+ax.set_ylabel('Precio de cierre (USD)');
+
+df.describe()
+
+df['media_movil'] = df['Close'].rolling(window=365).mean()
+df
+
+ax = df.plot(figsize=(12,4))
+ax.grid()
+ax.set_ylabel('Precio de cierre (USD)');
+
+df['cambio_%'] = 100*abs((df['Close']-df['media_movil'])/(df['media_movil']))
+df
+
+ax = df['cambio_%'].plot(figsize=(12,4))
+ax.grid()
+ax.set_ylabel('Variac. % (con respecto a la media anual)');
+
+ax = df['cambio_%'].plot(figsize=(12,4))
+
+# Añadir promedio
+ax.hlines(df['cambio_%'].mean(),xmin=df.index.min(), xmax=df.index.max(),
+          color='r', linestyle='--', label='Promedio')
+ax.grid()
+ax.legend()
+ax.set_ylabel('Variac. % (con respecto a la media anual)');
+
+import seaborn as sns
+
+sns.boxplot(df['cambio_%']);
+
+# Buscar valores extremos
+outliers = df[df['cambio_%']>60]['Close']
+outliers
+
+# Graficar serie de tiempo original
+ax = df['Close'].plot(figsize=(12,4))
+
+# Y superponer (en rojo) los valores extremos
+ax.scatter(outliers.index, outliers, color='r', label='Outliers')
+
+# Grilla y etiquetas
+ax.legend()
+ax.grid();
+
+df['std_movil'] = df['Close'].rolling(window=365).std()
+
+# Graficar
+ax = df[['Close','std_movil']].plot(figsize=(12,4))
+
+# Ajustar gráfica
+ax.legend()
+ax.grid()
+ax.set_ylabel('Precio de cierre (USD)');
+
+df['std_movil'].plot.bar(figsize=(12,4));
+
+# Remuestreo anual. Por cada año se calculará la media de
+# cada variable
+df_anual = df.resample('Y').mean()
+
+# Y ahora sí generemos el gráfico
+ax = df_anual['std_movil'].dropna().plot.bar(figsize=(12,4));
+ax.grid()
+
+import statsmodels.api as sm
+import matplotlib.pyplot as plt
+
+# Calcular y generar gráfico
+fig, ax = plt.subplots(figsize=(12, 4))
+sm.graphics.tsa.plot_acf(df['Close'].dropna(), lags=120, ax=ax)
+plt.xlabel('Lags')
+plt.ylabel('ACF')
+plt.grid(True)
+plt.ylim([-0.5,1.2]);
